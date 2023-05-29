@@ -61,7 +61,7 @@ async function postCommentWithPuppeteer(
     // await timeout(100000);
 
     // Post a comment
-    if (!headless) await page.click("button[aria-label='Close']");
+    // if (!headless) await page.click("button[aria-label='Close']");
 
     await page.click('div[role="textbox"]');
     // wait random time between 1 and 8 seconds
