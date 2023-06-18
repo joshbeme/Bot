@@ -3,7 +3,13 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const { fetchPost, postCommentWithPuppeteer } = require("./apis/reddit");
-const { hasReplied, storeRepliedPost, randomTimeout, log } = require("./util");
+const {
+  hasReplied,
+  storeRepliedPost,
+  randomTimeout,
+  log,
+  timeout,
+} = require("./util");
 const config = require("./config");
 const { ONE_SECOND } = config;
 
@@ -66,7 +72,7 @@ console.log("Worker started");
         return subredditNameIncludes && !subredditNameExcludes;
       });
 
-      let shouldRetry = lastRetry + retryEvery < Date.now();
+      let shouldRetry = retryEvery > 0 && lastRetry + retryEvery < Date.now();
       for (const post of posts) {
         log("********* NEW POST START **********");
 
@@ -127,7 +133,7 @@ console.log("Worker started");
         } else {
           log("Already replied to post by " + post.author.name);
         }
-        shouldRetry = lastRetry + retryEvery < Date.now();
+        shouldRetry = retryEvery > 0 && lastRetry + retryEvery < Date.now();
         if (shouldRetry) {
           break;
         }
@@ -137,9 +143,10 @@ console.log("Worker started");
         log(".");
       }
 
-      if (shouldRetry) {
+      if (shouldRetry || retryEvery > 0) {
         log("Retrying...");
         lastRetry = Date.now();
+        if (!shouldRetry) await timeout(lastRetry + retryEvery - Date.now());
         await runnMeBitch();
       }
     } catch (error) {
