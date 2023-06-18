@@ -20,7 +20,7 @@ export const uiConfig = {
   },
   sortSubredditsBy: {
     type: "pick-one",
-    name: "Sort Subreddits By",
+    name: "Sort Reddit Search By",
     default: "hot",
     options: ["hot", "new", "rising", "controversial", "top", "gilded"],
     group: "Reddit",
@@ -75,6 +75,12 @@ export const uiConfig = {
     type: "boolean",
     name: "Display Browser when bot replies",
     default: true,
+    group: "Bot Settings",
+  },
+  retryEvery: {
+    type: "time",
+    name: "Retry every (ms)",
+    default: 1000 * 60 * 30, // 30 minutes
     group: "Bot Settings",
   },
 

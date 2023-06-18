@@ -17,6 +17,8 @@ parentPort.postMessage(
 // Create a worker that looks at the schema in uiConfig
 // and configures the bot with the appropriate API responses
 
+let lastRetry = Date.now();
+console.log("Worker started");
 (async () => {
   const {
     // Reddit
@@ -38,31 +40,33 @@ parentPort.postMessage(
     chatGPTSystemRole,
     chatGPTModel,
     notHeadless,
+    retryEvery,
   } = workerData;
-
-  let posts = await fetchPost(redditSearch, subredditSearchLimit, {
-    sort: sortSubredditsBy,
-  });
-
-  const subredditIncludesArray = subredditIncludes.split("|");
-  const subredditExcludesArray = subredditExcludes.split("|");
-
-  // Only show subreddits that have temu in the name and they cant say canada either
-  posts = posts.filter((post) => {
-    const subredditName = post.subreddit_name_prefixed.toLowerCase();
-
-    const subredditNameIncludes = subredditIncludesArray.some((subreddit) =>
-      subredditName.includes(subreddit)
-    );
-    const subredditNameExcludes = subredditExcludesArray.some((subreddit) =>
-      subredditName.includes(subreddit)
-    );
-
-    return subredditNameIncludes && !subredditNameExcludes;
-  });
 
   const runnMeBitch = async () => {
     try {
+      let posts = await fetchPost(redditSearch, subredditSearchLimit, {
+        sort: sortSubredditsBy,
+      });
+
+      const subredditIncludesArray = subredditIncludes.split("|");
+      const subredditExcludesArray = subredditExcludes.split("|");
+
+      // Only show subreddits that have temu in the name and they cant say canada either
+      posts = posts.filter((post) => {
+        const subredditName = post.subreddit_name_prefixed.toLowerCase();
+
+        const subredditNameIncludes = subredditIncludesArray.some((subreddit) =>
+          subredditName.includes(subreddit)
+        );
+        const subredditNameExcludes = subredditExcludesArray.some((subreddit) =>
+          subredditName.includes(subreddit)
+        );
+
+        return subredditNameIncludes && !subredditNameExcludes;
+      });
+
+      let shouldRetry = lastRetry + retryEvery < Date.now();
       for (const post of posts) {
         log("********* NEW POST START **********");
 
@@ -77,6 +81,7 @@ parentPort.postMessage(
           log(`Replying to post: ${post.id}
           Author: ${post.author.name}`);
           storeRepliedPost(cacheByValue);
+          if (hasReplied !== "id") storeRepliedPost(post.id);
           log(`POST TITLE: ${post.title}`);
           log(`POST BODY: ${post.selftext}`);
           let response = "";
@@ -106,23 +111,44 @@ parentPort.postMessage(
 
           // await postComment(post, response);
           log(`Initiating response`);
-          await postCommentWithPuppeteer(
-            `https://reddit.com${post.permalink}`,
-            response,
-            { headless: !notHeadless, redditUsername, redditPassword }
-          );
+          try {
+            await postCommentWithPuppeteer(
+              `https://reddit.com${post.permalink}`,
+              response,
+              { headless: !notHeadless, redditUsername, redditPassword }
+            );
+          } catch (e) {
+            throw e;
+          }
+
           log("Comment posted for " + post.author.name);
 
-          await randomTimeout(ONE_SECOND * 15, botResponseInterval);
+          await randomTimeout(ONE_SECOND * 10, botResponseInterval);
         } else {
           log("Already replied to post by " + post.author.name);
         }
+        shouldRetry = lastRetry + retryEvery < Date.now();
+        if (shouldRetry) {
+          break;
+        }
         log("********* POST ENDED **********");
-        log(" ");
+        log(".");
+        log(".");
+        log(".");
+      }
+
+      if (shouldRetry) {
+        log("Retrying...");
+        lastRetry = Date.now();
+        await runnMeBitch();
       }
     } catch (error) {
       log("Error!!!: " + error.message);
-      if (retryOnFailure) await runnMeBitch();
+      if (retryOnFailure) {
+        log("Retrying...");
+
+        await runnMeBitch();
+      }
     }
   };
 

@@ -1,6 +1,6 @@
 const snoowrap = require("snoowrap");
 const puppeteer = require("puppeteer");
-const { timeout, log } = require("../util");
+const { timeout, log, randomTimeout } = require("../util");
 const { redditUsername: ruser, redditPassword: rpass } = require("../config");
 
 // // Set up Reddit API credentials
@@ -19,7 +19,7 @@ async function fetchPost(searchPhrase, limit = 500, options = {}) {
   const posts = await r.search({
     query: searchPhrase,
     sort: "new",
-    time: "year",
+    time: "all",
     limit,
     ...options,
   });
@@ -61,7 +61,10 @@ async function postCommentWithPuppeteer(
     // await timeout(100000);
 
     // Post a comment
-    if (!headless) await page.click("button[aria-label='Close']");
+    // if close button is present, click it
+    await timeout(1000);
+    const closeButton = await page.$("button[aria-label='Close']");
+    if (closeButton) await page.click("button[aria-label='Close']");
 
     await page.click('div[role="textbox"]');
     // wait random time between 1 and 8 seconds
@@ -78,7 +81,8 @@ async function postCommentWithPuppeteer(
       `Error posting a comment on the post at URL: ${postUrl}`,
       error
     );
-    throw error;
+    console.log("Hi this is the error talking");
+    throw new Error(error);
   } finally {
     log(`Responded to post with URL ${postUrl}`);
     log("Closing the browser");

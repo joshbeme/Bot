@@ -21,6 +21,10 @@ function hasReplied(postId) {
 // Function to store the replied post's ID
 function storeRepliedPost(postId) {
   repliedPosts.push(postId);
+  fs.writeFileSync(
+    path.join(__dirname, "replied_posts.txt"),
+    repliedPosts.join("\n")
+  );
 }
 
 async function combineAudioVideo(audioPath, videoPath, outputPath) {
