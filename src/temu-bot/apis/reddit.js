@@ -74,6 +74,7 @@ async function postCommentWithPuppeteer(
 
     await timeout(Math.floor(Math.random() * 7000) + 1000);
     await page.click('button[type="submit"]');
+    await timeout(Math.floor(Math.random() * 7000) + 1000);
 
     console.log(`Posted a comment on the post at URL: ${postUrl}`);
   } catch (error) {
